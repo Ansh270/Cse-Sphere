@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /test/{docId} {
+      allow get: if true;
+      allow list: if false;
+    }
+
+    // 1. Global Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isVerified() { return request.auth.token.email_verified == true; }
+
+    // 2. Entity Validations
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email', 'role']) &&
+             data.keys().size() == 3 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.email is string && data.email.size() > 0 && data.email.size() < 200 &&
+             data.role in ['student', 'faculty', 'admin'];
+    }
+
+    function isValidNote(data) {
+      return data.keys().hasAll(['title', 'authorId', 'fileUrl', 'createdAt']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.authorId == request.auth.uid &&
+             data.fileUrl is string && data.fileUrl.size() < 1000 &&
+             data.createdAt == request.time;
+    }
+
+    function isValidDiscussion(data) {
+      return data.keys().hasAll(['title', 'authorId', 'content', 'createdAt']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.authorId == request.auth.uid &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 10000 &&
+             data.createdAt == request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'avatar', 'role'])
+      );
+    }
+
+    match /notes/{noteId} {
+      allow read: if isSignedIn() && isValidId(noteId);
+      allow create: if isSignedIn() && isValidNote(incoming());
+      allow update: if isOwner(existing().authorId) && isValidNote(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'tags'])
+      );
+      allow delete: if isOwner(existing().authorId);
+    }
+
+    match /discussions/{discussionId} {
+      allow read: if isSignedIn() && isValidId(discussionId);
+      allow create: if isSignedIn() && isValidDiscussion(incoming());
+      allow update: if isOwner(existing().authorId) && isValidDiscussion(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['content', 'title', 'tags']) ||
+        (incoming().diff(existing()).affectedKeys().hasOnly(['likes']) && incoming().likes == existing().likes + 1)
+      );
+      allow delete: if isOwner(existing().authorId);
+    }
+  }
+}

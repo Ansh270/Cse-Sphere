@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile data",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "avatar": { "type": "string" },
+        "role": { "type": "string", "enum": ["student", "faculty", "admin"] }
+      },
+      "required": ["name", "email", "role"]
+    },
+    "Note": {
+      "title": "Lecture Note",
+      "description": "Educational resource metadata",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "fileUrl": { "type": "string" },
+        "category": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "downloads": { "type": "number" }
+      },
+      "required": ["title", "authorId", "fileUrl"]
+    },
+    "Discussion": {
+      "title": "Discussion Thread",
+      "description": "Forum thread",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "content": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "likes": { "type": "number" }
+      },
+      "required": ["title", "authorId", "content"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/notes/{noteId}": {
+      "schema": "Note",
+      "description": "Academic notes"
+    },
+    "/discussions/{discussionId}": {
+      "schema": "Discussion",
+      "description": "Forum discussions"
+    },
+    "/test/{docId}": {
+      "schema": "object",
+      "description": "Connection test collection"
+    }
+  }
+}
